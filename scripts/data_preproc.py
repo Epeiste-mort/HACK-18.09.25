@@ -7,11 +7,17 @@ def data_preproc(data, storing_type: str, get_slice_num: bool = False) -> list:
         # требуется итеративно применять данную функцию к каждой папке
         mean_slice = None
         slice_num = None
+        
+        if len(data) == 0:
+            raise ValueError("Нет данных для обработки")
+        
         mid_index = len(data) // 2
         
         imgs_np = np.array(data) 
         imgs_np = imgs_np.astype(np.float32)
-        imgs_np /= np.max(np.abs(imgs_np))
+        max_val = np.max(np.abs(imgs_np))
+        if max_val > 0:
+            imgs_np /= max_val
         
         mean_slice = imgs_np[mid_index, :, :][..., np.newaxis] 
         mean_slice = mean_slice.squeeze()

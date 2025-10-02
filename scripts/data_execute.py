@@ -8,16 +8,17 @@ from typing import Union
 import pydicom as pdc
 import gc
 import nibabel as nib
+import tempfile
 
 def data_execute(path: str, return_files: bool = False) -> list | str:
-    TMP_PATH = r"C:\Users\user\Desktop\MIREA\Хак\scripts\tmp"
+    TMP_PATH = os.getenv("TMP_ROOT") or tempfile.gettempdir()
     
     def file_runner(folder: str) -> list:
         files = []
         extensions = []
         
         for file in folder.rglob('*'):
-            if file.is_file():
+            if file.is_file() and file.stat().st_size > 0:  # Только файлы с размером > 0
                 extension = file.suffix
                 filename = file.name
                 
@@ -31,13 +32,16 @@ def data_execute(path: str, return_files: bool = False) -> list | str:
         output_type = "slices"
         
         if len(extentions) == 1 or len(extentions) == 0:
-            extention = list(extentions)[0]
+            extention = list(extentions)[0] if len(extentions) > 0 else ''
             
             match extention:
                 case '.dcm' | '':
                     for file in files:
-                        dc_file = pdc.dcmread(file)
-                        processed_formats.append(dc_file.pixel_array)
+                        try:
+                            dc_file = pdc.dcmread(file, force=True)
+                            processed_formats.append(dc_file.pixel_array)
+                        except Exception:
+                            pass  # Skip invalid files
                     
                 case '.nii' | '.gz':
                     for file in files:
@@ -79,9 +83,6 @@ def data_execute(path: str, return_files: bool = False) -> list | str:
                     folder = pathlib.Path(os.path.join(TMP_PATH, archive_name))
                     files, extentions = file_runner(folder)
                     
-                    if folder.exists() and folder.is_dir():
-                        shutil.rmtree(folder)
-                    
                 elif tarfile.is_tarfile(path):
                     archive_path = pathlib.Path(path)
                     archive_name = archive_path.stem
@@ -92,9 +93,6 @@ def data_execute(path: str, return_files: bool = False) -> list | str:
                     folder = pathlib.Path(os.path.join(TMP_PATH, archive_name))
                     files, extentions = file_runner(folder)
                     
-                    if folder.exists() and folder.is_dir():
-                        shutil.rmtree(folder)
-                    
                 elif rarfile.is_rarfile(path):
                     archive_path = pathlib.Path(path)
                     archive_name = archive_path.stem
@@ -104,9 +102,6 @@ def data_execute(path: str, return_files: bool = False) -> list | str:
                     
                     folder = pathlib.Path(os.path.join(TMP_PATH, archive_name))
                     files, extentions = file_runner(folder)
-                    
-                    if folder.exists() and folder.is_dir():
-                        shutil.rmtree(folder)
                 else:
                     return os.listdir(path)
                 
